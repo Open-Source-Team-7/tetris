@@ -74,7 +74,7 @@ int last_score = 0; //마지막게임점수
 int best_score = 0; //최고게임점수 
 
 int new_block_on = 0;	//새로운 블럭이 필요함을 알리는 flag 
-int crush_on = 0;		//현재 이동중인 블록이 충돌상태인지 알려주는 flag 
+int crush_on = 0;		//현재 이동중인 블록이 충돌 상태인지 알려주는 flag 
 int level_up_on = 0;	//다음레벨로 진행(현재 레벨목표가 완료되었음을) 알리는 flag 
 int space_key_on = 0;	//hard drop상태임을 알려주는 flag 
 
@@ -323,29 +323,40 @@ void draw_main(void) {
 					break;
 
 				main_cpy[i][j] = main_org[i][j];	// main_cpy 갱신
+
+				
 				}
 			}
 		}
 	}
+
+	
 }
 
-void new_block(void) { //새로운 블록 생성  
+void new_block(void) {
+	
+	// 새로운 블럭을 생성하는 함수 
+	
 	int i, j;
 
-	bx = (MAIN_X / 2) - 1; //블록 생성 위치x좌표(게임판의 가운데) 
-	by = 0;  //블록 생성위치 y좌표(제일 위) 
-	b_type = b_type_next; //다음블럭값을 가져옴 
-	b_type_next = rand() % 7; //다음 블럭을 만듦 
-	b_rotation = 0;  //회전은 0번으로 가져옴 
+	bx = (MAIN_X / 2) - 1;		// 블록 생성 위치x좌표 (게임판의 가운데) 
+	by = 0;						// 블록 생성위치 y좌표 (제일 위) 
+	b_type = b_type_next;		// 다음 블럭 값을 가져옴 
+	b_type_next = rand() % 7;	// 다음 블럭을 만듦 
+	b_rotation = 0;				// 회전은 0번으로 가져옴 
 
 	new_block_on = 0; //new_block flag를 끔  
 
-	for (i = 0; i < 4; i++) { //게임판 bx, by위치에 블럭생성  
+	for (i = 0; i < 4; i++) {	// 게임판 bx, by위치에 블럭 생성  
 		for (j = 0; j < 4; j++) {
 			if (blocks[b_type][b_rotation][i][j] == 1) main_org[by + i][bx + j] = ACTIVE_BLOCK;
 		}
 	}
-	for (i = 1; i < 3; i++) { //게임상태표시에 다음에 나올블럭을 그림 
+
+	// TODO 다음에 나올 블럭을 그리는 함수 생성
+
+	for (i = 1; i < 3; i++) {	// 게임 상태 표시에 다음에 나올 블럭을 그림
+
 		for (j = 0; j < 4; j++) {
 			if (blocks[b_type_next][0][i][j] == 1) {
 				gotoxy(STATUS_X_ADJ + 2 + j, i + 6);
@@ -357,94 +368,188 @@ void new_block(void) { //새로운 블록 생성
 			}
 		}
 	}
-}
+
+} // new_block 함수
 
 void check_key(void) {
-	key = 0; //키값 초기화  
 
-	if (kbhit()) { //키입력이 있는 경우  
-		key = getch(); //키값을 받음
-		if (key == 224) { //방향키인경우 
-			do { key = getch(); } while (key == 224);//방향키지시값을 버림 
+	// 키를 눌렀을 때, 블럭이 이동 가능한지 확인
+
+	key = 0;		//키 값 초기화  
+
+	if (kbhit()) {			//키 입력이 있는 경우  
+
+		key = getch();		//키 값을 받음
+
+		if (key == 224) { // 방향키인경우 
+
+			do { key = getch(); } while (key == 224);// 방향키 지시값을 버림 
+
 			switch (key) {
-			case LEFT: //왼쪽키 눌렀을때  
-				if (check_crush(bx - 1, by, b_rotation) == true) move_block(LEFT);
-				break;                            //왼쪽으로 갈 수 있는지 체크 후 가능하면 이동
-			case RIGHT: //오른쪽 방향키 눌렀을때- 위와 동일하게 처리됨 
-				if (check_crush(bx + 1, by, b_rotation) == true) move_block(RIGHT);
+
+			case LEFT: // 왼쪽 키 눌렀을 때 왼쪽으로 갈 수 있는지 체크 후 가능하면 이동
+				if (check_crush(bx - 1, by, b_rotation) == true)
+					move_block(LEFT);
+				break;                            
+
+			case RIGHT: // 오른쪽 방향키 눌렀을 때 - 위와 동일하게 처리됨 
+				if (check_crush(bx + 1, by, b_rotation) == true)
+					move_block(RIGHT);
 				break;
-			case DOWN: //아래쪽 방향키 눌렀을때-위와 동일하게 처리됨 
-				if (check_crush(bx, by + 1, b_rotation) == true) move_block(DOWN);
+
+			case DOWN: // 아래쪽 방향키 눌렀을 때 - 위와 동일하게 처리됨 
+				if (check_crush(bx, by + 1, b_rotation) == true)
+					move_block(DOWN);
 				break;
+
 			case UP: //위쪽 방향키 눌렀을때 
-				if (check_crush(bx, by, (b_rotation + 1) % 4) == true) move_block(UP);
-				//회전할 수 있는지 체크 후 가능하면 회전
-				else if (crush_on == 1 && check_crush(bx, by - 1, (b_rotation + 1) % 4) == true) move_block(100);
-			}                    //바닥에 닿은 경우 위쪽으로 한칸띄워서 회전이 가능하면 그렇게 함(특수동작)
+				if (check_crush(bx, by, (b_rotation + 1) % 4) == true)
+					move_block(UP);
+				// 회전할 수 있는지 체크 후 가능하면 회전
+				else if (crush_on == 1 && check_crush(bx, by - 1, (b_rotation + 1) % 4) == true)
+					move_block(100);
+				// 바닥에 닿은 경우 위쪽으로 한 칸띄워서 회전이 가능하면 그렇게 함(특수동작)
+				// TODO 특수동작 확인
+
+			}                   
+
 		}
-		else { //방향키가 아닌경우 
+
+		else { // 방향키가 아닌 경우 
+
 			switch (key) {
+
 			case SPACE: //스페이스키 눌렀을때 
+
 				space_key_on = 1; //스페이스키 flag를 띄움 
-				while (crush_on == 0) { //바닥에 닿을때까지 이동시킴 
+
+				while (crush_on == 0) { // 바닥에 닿을 때까지 이동시킴 
+
 					drop_block();
 					score += level; // hard drop 보너스
 					gotoxy(STATUS_X_ADJ, STATUS_Y_SCORE); printf("        %6d", score); //점수 표시  
 				}
 				break;
-			case P: //P(대문자) 눌렀을때 
-			case p: //p(소문자) 눌렀을때 
+
+			case P: // P(대문자) 눌렀을때 
+			case p: // p(소문자) 눌렀을때 
 				pause(); //일시정지 
 				break;
-			case ESC: //ESC눌렀을때 
-				system("cls"); //화면을 지우고 
-				exit(0); //게임종료 
+
+			case ESC: // ESC눌렀을때 
+				system("cls"); // 화면을 지우고 
+				exit(0); // 게임 종료 
 			}
 		}
 	}
-	while (kbhit()) getch(); //키버퍼를 비움 
-}
+	while (kbhit()) getch(); // 키 버퍼를 비움 
+} 
 
 void drop_block(void) {
+
 	int i, j;
 
 	if (crush_on && check_crush(bx, by + 1, b_rotation) == true) crush_on = 0;
-	//밑이 비어있으면 crush flag 끔 
+	// 현재 충돌되어있고, 아래가 비어있을 경우 crush_on = 0
+
+	// 밑이 비어있으면 crush flag 끔 
+
 	if (crush_on && check_crush(bx, by + 1, b_rotation) == false) {
-		//밑이 비어있지않고 crush flag가 켜저있으면 
-		for (i = 0; i < MAIN_Y; i++) { //현재 조작중인 블럭을 굳힘 
+
+		// 밑이 비어있지않고 crush flag가 켜저있으면 
+
+		for (i = 0; i < MAIN_Y; i++) {
 			for (j = 0; j < MAIN_X; j++) {
 				if (main_org[i][j] == ACTIVE_BLOCK) main_org[i][j] = INACTIVE_BLOCK;
 			}
 		}
-		crush_on = 0; //flag를 끔 
-		check_line(); //라인체크를 함 
-		new_block_on = 1; //새로운 블럭생성 flag를 켬    
+		 
+		crush_on = 0;		// flag를 끔 
+		check_line();		// 라인 체크를 함 
+		new_block_on = 1; // 새로운 블럭생성 flag를 켬    
 		return; //함수 종료 
 	}
-	if (check_crush(bx, by + 1, b_rotation) == true) move_block(DOWN);
-	//밑이 비어있으면 밑으로 한칸 이동 
-	if (check_crush(bx, by + 1, b_rotation) == false) crush_on++;
-	//밑으로 이동이 안되면  crush flag를 켬
+
+	if (check_crush(bx, by + 1, b_rotation) == true)
+		move_block(DOWN);
+	// 밑이 비어있으면 밑으로 한칸 이동 
+
+	if (check_crush(bx, by + 1, b_rotation) == false)
+		crush_on++;
+	// 밑으로 이동이 안되면  crush flag를 켬
+
 }
 
-int check_crush(int bx, int by, int b_rotation) { //지정된 좌표와 회전값으로 충돌이 있는지 검사 
+int check_crush (int bx, int by, int b_rotation) {
+	
+	// 지정된 좌표와 회전값으로 충돌이 있는지 검사 
+
 	int i, j;
 
 	for (i = 0; i < 4; i++) {
-		for (j = 0; j < 4; j++) { //지정된 위치의 게임판과 블럭모양을 비교해서 겹치면 false를 리턴 
-			if (blocks[b_type][b_rotation][i][j] == 1 && main_org[by + i][bx + j] > 0) return false;
+		for (j = 0; j < 4; j++) { // 지정된 위치의 게임판과 블럭모양을 비교해서 겹치면 false를 리턴 
+			if ( blocks[b_type][b_rotation][i][j] == 1 && main_org[by + i][bx + j] > 0) return false;
 		}
 	}
-	return true; //하나도 안겹치면 true리턴 
+	return true; // 하나도 안겹치면 true리턴 
 };
 
-void move_block(int dir) { //블록을 이동시킴 
+void move_block(int dir) {
+	
+	// 블록을 dir 방향으로 이동시킨다.
+
 	int i, j;
 
+	
+	for (i = 0; i < 4; i++) {
+		
+		// 현재 좌표의 블럭을 지움 
+		for (j = 0; j < 4; j++) {
+			if (blocks[b_type][b_rotation][i][j] == 1) main_org[by + i][bx + j] = EMPTY;
+		}
+	}
+
 	switch (dir) {
-	case LEFT: //왼쪽방향 
-		for (i = 0; i < 4; i++) { //현재좌표의 블럭을 지움 
+
+	case LEFT:
+		bx--;
+		break;
+
+	case RIGHT:
+		bx++;
+		break;
+
+	case DOWN:
+		by++;
+		break;
+
+	case UP:
+		b_rotation = (b_rotation + 1) % 4; //회전값을 1증가시킴(3에서 4가 되는 경우는 0으로 되돌림) 
+		break;
+
+	case 100:
+		b_rotation = (b_rotation + 1) % 4;
+		by--;
+		break;
+	}
+
+	for (i = 0; i < 4; i++) { //왼쪽으로 한칸가서 active block을 찍음 
+		for (j = 0; j < 4; j++) {
+			if (blocks[b_type][b_rotation][i][j] == 1) main_org[by + i][bx + j] = ACTIVE_BLOCK;
+		}
+	}
+
+
+	
+		
+	
+
+	/*
+	
+	switch (dir) {
+
+	case LEFT: // 왼쪽방향 
+		for (i = 0; i < 4; i++) { // 현재 좌표의 블럭을 지움 
 			for (j = 0; j < 4; j++) {
 				if (blocks[b_type][b_rotation][i][j] == 1) main_org[by + i][bx + j] = EMPTY;
 			}
@@ -515,7 +620,8 @@ void move_block(int dir) { //블록을 이동시킴
 		}
 		by--;
 		break;
-	}
+	}*/
+	
 }
 
 void check_line(void) {
