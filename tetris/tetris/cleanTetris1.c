@@ -109,7 +109,10 @@ void new_block(Block *block, Flag *flag);
 void check_key(Game *game, Block *block, Flag *flag);
 int check_crush(Block *block, int x, int y, int rotation);
 void move_block(int dir, Block *block);
-void drop_block(Flag *flag, Block *block);
+void drop_block(Game *game, Flag *flag, Block *block);
+void check_line(Game *game, Flag *flag);
+void level_up(Game *game, Flag *flag);
+void check_game_over(Game *game, Flag *flag);
 
 
 // 커서 숨기기
@@ -164,9 +167,9 @@ int main() {
 
 	while (1) {
 		for (i = 0; i < 5; i++) {	//블록이 한칸떨어지는동안 5번 키입력받을 수 있음 
-			check_key(&game, &block, &flag);
-			draw_main();			// 2. 화면을 그림
-			Sleep(game.speed);			// 게임 속도 조절
+			check_key(&game, &block, &flag);// 1. 키 입력
+			draw_main();					// 2. 화면을 그림
+			Sleep(game.speed);				// 게임 속도 조절
 
 			if (flag.crush && check_crush(&block, 0, 1, block.rotation) == false) Sleep(50);
 			//블록이 충돌중인 경우 추가로 이동 및 회전할 시간을 갖음
@@ -177,7 +180,8 @@ int main() {
 			}
 		}
 
-		drop_block(&flag, &block);			// 블록을 한칸 내림 
+		drop_block(&game, &flag, &block);			// 블록을 한칸 내림 
+		check_game_over(&game, &flag);		// 게임오버를 체크
 
 		if (flag.new_block == 1) new_block(&block, &flag); // 뉴 블럭 flag가 있는 경우 새로운 블럭 생성 
 	}
@@ -456,7 +460,8 @@ void check_key(Game *game, Block *block, Flag *flag) {
 
 				while (flag->crush == 0) { // 바닥에 닿을 때까지 이동시킴 
 
-					drop_block(flag, block);
+					drop_block(game, flag, block);
+				
 					game->score += game->level; // hard drop 보너스
 					gotoxy(STATUS_X_ADJ, STATUS_Y_SCORE); printf("        %6d", game->score); //점수 표시  
 				}
@@ -538,7 +543,7 @@ void move_block(int dir, Block *block) {
 	}
 } // move_block
 
-void drop_block(Flag *flag, Block *block) {
+void drop_block(Game *game, Flag *flag, Block *block) {
 
 	int i, j;
 
@@ -547,11 +552,15 @@ void drop_block(Flag *flag, Block *block) {
 	}
 	else {
 		/*
+
 		밑이 비어있지 않다. == 더 이상 내려갈 수 없다.
-		crush == 0 : 유예시간 주기 전
-		crush == 1 : 유예시간 준 후
+
+		crush == 0 : 유예 시간 주기 전
+		crush == 1 : 유예 시간 준 후
+
 		현재 블럭을 비활성화 시킨 후, 가득 찬 줄이 있는지 확인한다.
 		새로운 블럭 생성flag 를 킨다.
+
 		*/
 
 		if (flag->crush == 1) {
@@ -562,45 +571,197 @@ void drop_block(Flag *flag, Block *block) {
 			}
 
 			flag->crush = 0;		// flag를 끔 
-			// check_line();			// 라인 체크를 함 
+			check_line(game, flag);			// 라인 체크를 함
+			if (game->cnt >= 10) {
+				printf("1");
+				level_up(game, flag);
+			}
+			
 			flag->new_block = 1;	// 새로운 블럭생성 flag를 켬    
 			return;					//함수 종료 
 		}
 		flag->crush++;
 	}
+} // drop block
 
-	/*
-	if (crush_on && check_crush(bx, by + 1, b_rotation) == true) crush_on = 0;
-	// 현재 충돌되어있고, 아래가 비어있을 경우 crush_on = 0
+void check_line(Game *game, Flag *flag) {
+	int i, j, k, l;
 
-	// 밑이 비어있으면 crush flag 끔 
+	int block_amount;		// 한줄의 블록 갯수를 저장하는 변수 
+	int combo = 0;			// 콤보갯수 저장하는 변수 지정및 초기화 
 
-	if (crush_on && check_crush(bx, by + 1, b_rotation) == false) {
+	for (i = MAIN_Y - 2; i > 3;) {	// i=MAIN_Y-2 : 밑쪽벽의 윗칸부터,  i>3 : 천장(3)아래까지 검사 
 
-		// 밑이 비어있지않고 crush flag가 켜저있으면 
+		block_amount = 0; //블록갯수 저장 변수 초기화 
 
-		for (i = 0; i < MAIN_Y; i++) {
-			for (j = 0; j < MAIN_X; j++) {
-				if (main_org[i][j] == ACTIVE_BLOCK) main_org[i][j] = INACTIVE_BLOCK;
+		for (j = 1; j < MAIN_X - 1; j++) { // 벽과 벽사이의 블록갯루를 셈 
+			if (main_org[i][j] > 0) block_amount++;
+		}
+
+		if (block_amount == MAIN_X - 2) {			// 블록이 가득 찬 경우 
+
+			if (flag->level_up == 0) {				// 레벨업상태가 아닌 경우에 (레벨업이 되면 자동 줄삭제가 있음) 
+
+				game->score += 100 * game->level;	// 점수 추가 
+				game->cnt++;						// 지운 줄 갯수 카운트 증가 
+				combo++;							// 콤보수 증가
+			}
+
+			for (k = i; k > 1; k--) {				// 윗줄을 한칸씩 모두 내림(윗줄이 천장이 아닌 경우에만) 
+
+				for (l = 1; l < MAIN_X - 1; l++) {
+
+					if (main_org[k - 1][l] != CEILLING)
+						 main_org[k][l] = main_org[k - 1][l];
+
+					else main_org[k][l] = EMPTY;
+					// 윗줄이 천장인 경우에는 천장을 한칸 내리면 안되니까 빈칸을 넣음 
+				}
+			}
+		}
+		else i--;
+	}
+
+
+	if (combo) { // 줄 삭제가 있는 경우 점수와 레벨 목표를 새로 표시함  
+		if (combo > 1) { // 2콤보 이상인 경우 보너스 및 메세지를 게임판에 띄웠다가 지움 
+			gotoxy(MAIN_X_ADJ + (MAIN_X / 2) - 1, MAIN_Y+2); printf("%d COMBO!", combo);
+			Sleep(500);
+			game->score += (combo * game->level * 100);
+			gotoxy(MAIN_X_ADJ + (MAIN_X / 2) - 1, MAIN_Y + 2); printf("        ");
+		}
+
+		gotoxy(STATUS_X_ADJ, STATUS_Y_GOAL); printf(" GOAL  : %5d", (game->cnt <= 10) ? 10 - game->cnt : 0);
+		gotoxy(STATUS_X_ADJ, STATUS_Y_SCORE); printf("        %6d", game->score);
+	}
+} // check_line
+
+void level_up(Game *game, Flag *flag) {
+	int i, j;
+
+	
+		draw_main();
+		flag->level_up = 1;
+		game->level += 1; //레벨을 1 올림 
+		game->cnt = 0; //지운 줄수 초기화   
+
+		for (i = 0; i < 4; i++) {
+			
+
+			gotoxy(MAIN_X_ADJ + (MAIN_X / 2) - 3, MAIN_Y_ADJ + 4);
+			printf("☆LEVEL UP!☆");
+			gotoxy(MAIN_X_ADJ + (MAIN_X / 2) - 2, MAIN_Y_ADJ + 6);
+			printf("☆SPEED UP!☆");
+			Sleep(200);
+
+			gotoxy(MAIN_X_ADJ + (MAIN_X / 2) - 3, MAIN_Y_ADJ + 4);
+			printf("             ");
+			gotoxy(MAIN_X_ADJ + (MAIN_X / 2) - 2, MAIN_Y_ADJ + 6);
+			printf("             ");
+
+		}
+
+
+		for (i = MAIN_Y - 2; i > MAIN_Y - 2 - (game->level - 1); i--) { //레벨업보상으로 각 레벨-1의 수만큼 아랫쪽 줄을 지워줌 
+			for (j = 1; j < MAIN_X - 1; j++) {
+				main_org[i][j] = INACTIVE_BLOCK; // 줄을 블록으로 모두 채우고 
+				gotoxy(MAIN_X_ADJ + j, MAIN_Y_ADJ + i); // 별을 찍어줌.. 이뻐보이게 
+				printf("★");
 			}
 		}
 
-		crush_on = 0;		// flag를 끔 
-		check_line();		// 라인 체크를 함 
-		new_block_on = 1;	// 새로운 블럭생성 flag를 켬    
-		return;				//함수 종료 
+		Sleep(200);					//별찍은거 보여주기 위해 delay 
+		check_line(game, flag);		//블록으로 모두 채운것 지우기
+									//check_line()함수 내부에서 level up flag가 켜져있는 경우 점수는 없음.         
+
+		switch (game->level) { //레벨별로 속도를 조절해줌. 
+		case 2:
+			game->speed = 50;
+			break;
+		case 3:
+			game->speed = 25;
+			break;
+		case 4:
+			game->speed = 10;
+			break;
+		case 5:
+			game->speed = 5;
+			break;
+		case 6:
+			game->speed = 4;
+			break;
+		case 7:
+			game->speed = 3;
+			break;
+		case 8:
+			game->speed = 2;
+			break;
+		case 9:
+			game->speed = 1;
+			break;
+		case 10:
+			game->speed = 0;
+			break;
+		}
+		flag->level_up = 0; //레벨업 flag꺼줌
+
+		gotoxy(STATUS_X_ADJ, STATUS_Y_LEVEL); printf(" LEVEL : %5d", game->level);		//레벨표시 
+		gotoxy(STATUS_X_ADJ, STATUS_Y_GOAL); printf(" GOAL  : %5d", 10 - game->cnt);	// 레벨목표 표시 
+
+} // check_level_up
+
+void check_game_over(Game *game, Flag *flag) {
+	int i;
+
+	int x = 5;
+	int y = 5;
+
+	for (i = 1; i < MAIN_X - 2; i++) {
+		if (main_org[3][i] > 0) { //천장(위에서 세번째 줄)에 inactive가 생성되면 게임 오버 
+			gotoxy(x, y + 0); printf("▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤"); //게임오버 메세지 
+			gotoxy(x, y + 1); printf("▤                              ▤");
+			gotoxy(x, y + 2); printf("▤  +-----------------------+   ▤");
+			gotoxy(x, y + 3); printf("▤  |  G A M E  O V E R..   |   ▤");
+			gotoxy(x, y + 4); printf("▤  +-----------------------+   ▤");
+			gotoxy(x, y + 5); printf("▤   YOUR SCORE: %6d         ▤", game->score);
+			gotoxy(x, y + 6); printf("▤                              ▤");
+			gotoxy(x, y + 7); printf("▤     Press r to restart..     ▤");
+			gotoxy(x, y + 8); printf("▤     Press esc to quit..      ▤");
+			gotoxy(x, y + 9); printf("▤                              ▤");
+			gotoxy(x, y + 10); printf("▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤");
+			game->last_score = game->score; //게임점수를 옮김 
+
+			if (game->score > game->best_score) { //최고기록 갱신시 
+				FILE* file = fopen("score.dat", "wt"); //score.dat에 점수 저장                
+
+				gotoxy(x, y + 6); printf("▤  ★★★ BEST SCORE! ★★★   ▤  ");
+
+				if (file == 0) { //파일 에러메세지  
+					gotoxy(0, 0);
+					printf("FILE ERROR: SYSTEM CANNOT WRITE BEST SCORE ON \"SCORE.DAT\"");
+				}
+				else {
+					fprintf(file, "%d", game->score);
+					fclose(file);
+				}
+			}
+			Sleep(1000);
+
+			while (kbhit()) getch();  //키 버퍼를 비움
+			game->key = getch();			  //키 입력
+
+			switch (game->key) {
+			case 114:				  //키 = r 이면
+				reset(game, flag);			  //reset
+				break;
+			case ESC:				  //키 = esc 이면 exit
+				system("cls");
+				exit(0);
+				break;
+			}
+		}
 	}
-
-	if (check_crush(bx, by + 1) == true)
-		move_block(DOWN);
-	// 밑이 비어있으면 밑으로 한칸 이동 
-
-	if (check_crush(bx, by + 1) == false)
-		crush_on++;
-	// 밑으로 이동이 안되면  crush flag를 켬
-	*/
-
-} // drop block
+} // game_over
 
 
 
