@@ -62,6 +62,7 @@ void title(void);
 void reset(Game *game);
 void draw_map(Game *game);
 void reset_main(void);
+void draw_main(void);
 
 
 // 커서 숨기기
@@ -175,9 +176,9 @@ void reset(Game *game) {
 	
 	reset_main(); // main_org를 초기화 
 	draw_map(game); // 게임화면을 그림
-	/*
-	draw_main(); // 게임판을 그림 
 
+	draw_main(); // 게임판을 그림 
+	/*
 	b_type_next = rand() % 7;
 	new_block();
 
@@ -227,4 +228,55 @@ void draw_map(Game *game) { //게임 상태 표시를 나타내는 함수
 	gotoxy(STATUS_X_ADJ, y + 17); printf("  ▽   : Soft Drop     ESC  : Quit");
 	gotoxy(STATUS_X_ADJ, y + 20); printf("blog.naver.com/azure0777");
 }
+
+void draw_main(void) {
+
+	// 게임판을 그리는 함수
+
+	int i, j;
+
+	for (j = 1; j < MAIN_X - 1; j++) {
+
+		// 천장은 계속 새로운 블럭이 지나가서 지워지면 새로 그려줌 
+		if (main_org[3][j] == EMPTY) main_org[3][j] = CEILLING;
+	}
+
+	for (i = 0; i < MAIN_Y; i++) {
+
+		for (j = 0; j < MAIN_X; j++) {
+
+			if (main_cpy[i][j] != main_org[i][j]) {
+				// cpy랑 비교해서 값이 달라진 부분만 새로 그려줌
+				// 이게 없으면 게임판 전체를 계속 그려서 느려지고 반짝거림
+
+				gotoxy(MAIN_X_ADJ + j, MAIN_Y_ADJ + i);
+
+				switch (main_org[i][j]) {
+
+				case EMPTY:				//빈칸모양 
+					printf("  ");
+					break;
+				case CEILLING:			//천장모양 
+					printf(". ");
+					break;
+				case WALL:				//벽모양 
+					printf("▩");
+					break;
+				case INACTIVE_BLOCK:	//굳은 블럭 모양  
+					printf("□");
+					break;
+				case ACTIVE_BLOCK:		//움직이고있는 블럭 모양  
+					printf("■");
+					break;
+				default:
+					break;
+
+					main_cpy[i][j] = main_org[i][j];	// main_cpy 갱신
+				}
+			}
+		}
+	}
+} // draw_main
+
+
 
