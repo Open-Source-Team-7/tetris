@@ -109,6 +109,7 @@ void new_block(Block *block, Flag *flag);
 void check_key(Game *game, Block *block, Flag *flag);
 int check_crush(Block *block, int x, int y, int rotation);
 void move_block(int dir, Block *block);
+void drop_block(Flag *flag, Block *block);
 
 
 // 커서 숨기기
@@ -165,12 +166,21 @@ int main() {
 		for (i = 0; i < 5; i++) {	//블록이 한칸떨어지는동안 5번 키입력받을 수 있음 
 			check_key(&game, &block, &flag);
 			draw_main();			// 2. 화면을 그림
+			Sleep(game.speed);			// 게임 속도 조절
 
+			if (flag.crush && check_crush(&block, 0, 1, block.rotation) == false) Sleep(50);
+			//블록이 충돌중인 경우 추가로 이동 및 회전할 시간을 갖음
+
+			if (flag.space_key == 1) { //스페이스바를 누른 경우(hard drop) 추가로 이동 및 회전할 수 없음 break; 
+				flag.space_key = 0;
+				break;
+			}
 		}
 
+		drop_block(&flag, &block);			// 블록을 한칸 내림 
+
+		if (flag.new_block == 1) new_block(&block, &flag); // 뉴 블럭 flag가 있는 경우 새로운 블럭 생성 
 	}
-
-
 
 
 	return 0;
@@ -446,7 +456,7 @@ void check_key(Game *game, Block *block, Flag *flag) {
 
 				while (flag->crush == 0) { // 바닥에 닿을 때까지 이동시킴 
 
-					//drop_block();
+					drop_block(flag, block);
 					game->score += game->level; // hard drop 보너스
 					gotoxy(STATUS_X_ADJ, STATUS_Y_SCORE); printf("        %6d", game->score); //점수 표시  
 				}
@@ -527,6 +537,70 @@ void move_block(int dir, Block *block) {
 		}
 	}
 } // move_block
+
+void drop_block(Flag *flag, Block *block) {
+
+	int i, j;
+
+	if (check_crush(block, 0, 1, block->rotation) == true) {
+		move_block(DOWN, block);
+	}
+	else {
+		/*
+		밑이 비어있지 않다. == 더 이상 내려갈 수 없다.
+		crush == 0 : 유예시간 주기 전
+		crush == 1 : 유예시간 준 후
+		현재 블럭을 비활성화 시킨 후, 가득 찬 줄이 있는지 확인한다.
+		새로운 블럭 생성flag 를 킨다.
+		*/
+
+		if (flag->crush == 1) {
+			for (i = 0; i < MAIN_Y; i++) {
+				for (j = 0; j < MAIN_X; j++) {
+					if (main_org[i][j] == ACTIVE_BLOCK) main_org[i][j] = INACTIVE_BLOCK;
+				}
+			}
+
+			flag->crush = 0;		// flag를 끔 
+			// check_line();			// 라인 체크를 함 
+			flag->new_block = 1;	// 새로운 블럭생성 flag를 켬    
+			return;					//함수 종료 
+		}
+		flag->crush++;
+	}
+
+	/*
+	if (crush_on && check_crush(bx, by + 1, b_rotation) == true) crush_on = 0;
+	// 현재 충돌되어있고, 아래가 비어있을 경우 crush_on = 0
+
+	// 밑이 비어있으면 crush flag 끔 
+
+	if (crush_on && check_crush(bx, by + 1, b_rotation) == false) {
+
+		// 밑이 비어있지않고 crush flag가 켜저있으면 
+
+		for (i = 0; i < MAIN_Y; i++) {
+			for (j = 0; j < MAIN_X; j++) {
+				if (main_org[i][j] == ACTIVE_BLOCK) main_org[i][j] = INACTIVE_BLOCK;
+			}
+		}
+
+		crush_on = 0;		// flag를 끔 
+		check_line();		// 라인 체크를 함 
+		new_block_on = 1;	// 새로운 블럭생성 flag를 켬    
+		return;				//함수 종료 
+	}
+
+	if (check_crush(bx, by + 1) == true)
+		move_block(DOWN);
+	// 밑이 비어있으면 밑으로 한칸 이동 
+
+	if (check_crush(bx, by + 1) == false)
+		crush_on++;
+	// 밑으로 이동이 안되면  crush flag를 켬
+	*/
+
+} // drop block
 
 
 
