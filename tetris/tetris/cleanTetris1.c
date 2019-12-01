@@ -181,7 +181,7 @@ int main() {
 		}
 
 		drop_block(&game, &flag, &block);			// 블록을 한칸 내림 
-		check_game_over(&game, &flag);		// 게임오버를 체크
+		check_game_over(&game, &flag);				// 게임오버를 체크
 
 		if (flag.new_block == 1) new_block(&block, &flag); // 뉴 블럭 flag가 있는 경우 새로운 블럭 생성 
 	}
@@ -481,7 +481,6 @@ void check_key(Game *game, Block *block, Flag *flag) {
 	while (kbhit()) getch(); // 키 버퍼를 비움 
 } // check_key
 
-
 int check_crush(Block *block, int x, int y, int rotation) {
 
 	// 지정된 좌표와 회전값으로 충돌이 있는지 검사 
@@ -747,14 +746,14 @@ void check_game_over(Game *game, Flag *flag) {
 			}
 			Sleep(1000);
 
-			while (kbhit()) getch();  //키 버퍼를 비움
-			game->key = getch();			  //키 입력
+			while (kbhit()) getch();	//키 버퍼를 비움
+			game->key = getch();		//키 입력
 
 			switch (game->key) {
-			case 114:				  //키 = r 이면
-				reset(game, flag);			  //reset
+			case 114:					//키 = r 이면
+				reset(game, flag);		//reset
 				break;
-			case ESC:				  //키 = esc 이면 exit
+			case ESC:					//키 = esc 이면 exit
 				system("cls");
 				exit(0);
 				break;
