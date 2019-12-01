@@ -61,13 +61,14 @@ int main_cpy[MAIN_Y][MAIN_X]; /* 즉 maincpy는 게임판이 모니터에 표시
 
 typedef struct Game {
 
-	// game 정보 설정
+	// game 정보
 
 	int key;				//키보드로 입력받은 키값을 저장 
 	int speed;				//게임진행속도 
 	int level;				//현재 level 
 	int level_goal;			//다음레벨로 넘어가기 위한 목표점수 
 	int cnt;				//현재 레벨에서 제거한 줄 수를 저장 
+
 	int score;				//현재 점수 
 	int last_score;			//마지막게임점수 
 	int best_score;			//최고게임점수
@@ -76,6 +77,9 @@ typedef struct Game {
 }Game;
 
 typedef struct Flag {
+
+	// flag 정보
+
 	int new_block;	//새로운 블럭이 필요함을 알리는 flag 
 	int crush;		//현재 이동중인 블록이 충돌 상태인지 알려주는 flag 
 	int level_up;	//다음레벨로 진행(현재 레벨목표가 완료되었음을) 알리는 flag 
@@ -83,6 +87,9 @@ typedef struct Flag {
 }Flag;
 
 typedef struct Block {
+
+	// block 정보
+
 	int bx;					//이동중인 블록의 게임판상의 x좌표를 저장 
 	int by;					//이동중인 블록의 게임판상의 y좌표를 저장 
 	int type;				//블록 종류를 저장 
@@ -93,12 +100,15 @@ typedef struct Block {
 
 
 void title(void);
-void reset(Game *game);
+void reset(Game *game, Flag *flag);
 void draw_map(Game *game);
 void reset_main(void);
 void draw_main(void);
 void set_block(Block *block, int flag);
 void new_block(Block *block, Flag *flag);
+void check_key(Game *game, Block *block, Flag *flag);
+int check_crush(Block *block, int x, int y, int rotation);
+void move_block(int dir, Block *block);
 
 
 // 커서 숨기기
@@ -150,6 +160,15 @@ int main() {
 	reset(&game, &flag);					// 게임 정보 리셋
 	set_block(&block, 1);			// 생성될 블럭 설정
 	new_block(&block, &flag);
+
+	while (1) {
+		for (i = 0; i < 5; i++) {	//블록이 한칸떨어지는동안 5번 키입력받을 수 있음 
+			check_key(&game, &block, &flag);
+			draw_main();			// 2. 화면을 그림
+
+		}
+
+	}
 
 
 
@@ -220,11 +239,7 @@ void reset(Game *game, Flag *flag) {
 	draw_map(game); // 게임화면을 그림
 
 	draw_main(); // 게임판을 그림 
-	/*
-	b_type_next = rand() % 7;
-	new_block();
-	*/
-}
+} // reset
 
 void reset_main(void) { //게임판을 초기화  
 	int i, j;
@@ -245,7 +260,7 @@ void reset_main(void) { //게임판을 초기화
 	for (j = 0; j < MAIN_X; j++) { //바닥벽을 만듦 
 		main_org[MAIN_Y - 1][j] = WALL;
 	}
-}
+} // reset_main
 
 void draw_map(Game *game) { //게임 상태 표시를 나타내는 함수  
 	int y = 3;             // level, goal, score만 게임중에 값이 바뀔수 도 있음 그 y값을 따로 저장해둠 
@@ -268,7 +283,7 @@ void draw_map(Game *game) { //게임 상태 표시를 나타내는 함수
 	gotoxy(STATUS_X_ADJ, y + 16); printf("◁  ▷ : Left / Right   P   : Pause");
 	gotoxy(STATUS_X_ADJ, y + 17); printf("  ▽   : Soft Drop     ESC  : Quit");
 	gotoxy(STATUS_X_ADJ, y + 20); printf("blog.naver.com/azure0777");
-}
+} // draw_map
 
 void draw_main(void) {
 
@@ -375,7 +390,172 @@ void new_block(Block *block, Flag *flag) {
 			}
 		}
 	}
-
 } // new_block 함수
+
+void check_key(Game *game, Block *block, Flag *flag) {
+
+	// 키를 눌렀을 때, 블럭이 이동 가능한지 확인
+
+	game->key = 0;		//키 값 초기화  
+	int x_move = 0;
+	int y_move = 0;
+	int rotation = 0;
+
+	if (kbhit()) {			//키 입력이 있는 경우  
+
+		game->key = getch();		//키 값을 받음
+
+		if (game->key == 224) { // 방향키인경우 
+
+			do { game->key = getch(); } while (game->key == 224);// 방향키 지시값을 버림 
+
+			 switch (game->key) {
+
+			 case LEFT: // 왼쪽 키 눌렀을 때 왼쪽으로 갈 수 있는지 체크 후 가능하면 이동
+				x_move = -1;
+				
+				break;
+
+			 case RIGHT: // 오른쪽 방향키 눌렀을 때 - 위와 동일하게 처리됨 
+				x_move = 1;
+				break;
+
+			 case DOWN: // 아래쪽 방향키 눌렀을 때 - 위와 동일하게 처리됨 
+				y_move = 1;
+				break;
+				
+			 case UP: //위쪽 방향키 눌렀을때 
+				 rotation = 1;
+				
+				// 회전할 수 있는지 체크 후 가능하면 회전
+				/*
+				else if (flag->crush == 1 && check_crush(block->bx, block->by - 1, (block->rotation + 1) % 4) == true)
+					move_block(100, block);
+				// 바닥에 닿은 경우 위쪽으로 한 칸띄워서 회전이 가능하면 그렇게 함(특수동작)
+				// TODO 특수동작 확인
+				*/
+				
+
+				
+				/*
+			case LEFT: // 왼쪽 키 눌렀을 때 왼쪽으로 갈 수 있는지 체크 후 가능하면 이동
+				if (check_crush(block->bx - 1, block->by, block->rotation) == true)
+					move_block(LEFT, block);
+				break;
+
+			case RIGHT: // 오른쪽 방향키 눌렀을 때 - 위와 동일하게 처리됨 
+				if (check_crush(block->bx + 1, block->by, block->rotation) == true)
+					move_block(RIGHT, block);
+				break;
+
+			case DOWN: // 아래쪽 방향키 눌렀을 때 - 위와 동일하게 처리됨 
+				if (check_crush(block->bx, block->by + 1, block->rotation) == true)
+					move_block(DOWN, block);
+				break;
+
+			case UP: //위쪽 방향키 눌렀을때 
+				if (check_crush(block->bx, block->by, (block->rotation + 1) % 4) == true)
+					move_block(UP, block);
+				// 회전할 수 있는지 체크 후 가능하면 회전
+				else if (flag->crush == 1 && check_crush(block->bx, block->by - 1, (block->rotation + 1) % 4) == true)
+					move_block(100, block);
+				// 바닥에 닿은 경우 위쪽으로 한 칸띄워서 회전이 가능하면 그렇게 함(특수동작)
+				// TODO 특수동작 확인
+				*/
+			}
+			 if (check_crush(block, x_move, y_move, (block->rotation + rotation) % 4) == true)
+				move_block(game->key, block);
+		}
+
+		else { // 방향키가 아닌 경우 
+
+			switch (game->key) {
+
+			case SPACE: //스페이스키 눌렀을때 
+
+				flag->space_key = 1; //스페이스키 flag를 띄움 
+
+				while (flag->crush == 0) { // 바닥에 닿을 때까지 이동시킴 
+
+					//drop_block();
+					game->score += game->level; // hard drop 보너스
+					gotoxy(STATUS_X_ADJ, STATUS_Y_SCORE); printf("        %6d", game->score); //점수 표시  
+				}
+				break;
+
+			case P: // P(대문자) 눌렀을때 
+			case p: // p(소문자) 눌렀을때 
+				// pause(); //일시정지 
+				break;
+
+			case ESC: // ESC눌렀을때 
+				system("cls"); // 화면을 지우고 
+				exit(0); // 게임 종료 
+			}
+		}
+	}
+	while (kbhit()) getch(); // 키 버퍼를 비움 
+} // check_key
+
+int check_crush(Block *block, int x, int y, int rotation) {
+
+	// 지정된 좌표와 회전값으로 충돌이 있는지 검사 
+
+	int i, j;
+
+	for (i = 0; i < 4; i++) {
+		for (j = 0; j < 4; j++) { // 지정된 위치의 게임판과 블럭모양을 비교해서 겹치면 false를 리턴 
+			if (blocks[block->type][rotation][i][j] == 1 && main_org[block->by + y][block->bx + x] > 0) return false;
+		}
+	}
+	return true; // 하나도 안겹치면 true리턴 
+}; // check_crush
+
+void move_block(int dir, Block *block) {
+
+	// 블록을 dir 방향으로 이동시킨다.
+
+	int i, j;
+
+	for (i = 0; i < 4; i++) {
+
+		// 현재 좌표의 블럭을 지움 
+		for (j = 0; j < 4; j++) {
+			if (blocks[block->type][block->rotation][i][j] == 1) main_org[block->by + i][block->bx + j] = EMPTY;
+		}
+	}
+
+	switch (dir) {
+
+	case LEFT:
+		block->bx--;
+		break;
+
+	case RIGHT:
+		block->bx++;
+		break;
+
+	case DOWN:
+		block->by++;
+		break;
+
+	case UP:
+		block->rotation = (block->rotation + 1) % 4; //회전값을 1증가시킴(3에서 4가 되는 경우는 0으로 되돌림) 
+		break;
+
+	case 100:
+		block->rotation = (block->rotation + 1) % 4;
+		block->by--;
+		break;
+	}
+
+	for (i = 0; i < 4; i++) { //왼쪽으로 한칸가서 active block을 찍음 
+		for (j = 0; j < 4; j++) {
+			if (blocks[block->type][block->rotation][i][j] == 1) main_org[block->by + i][block->bx + j] = ACTIVE_BLOCK;
+		}
+	}
+} // move_block
+
+
 
 
