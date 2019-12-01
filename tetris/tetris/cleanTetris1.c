@@ -413,7 +413,6 @@ void check_key(Game *game, Block *block, Flag *flag) {
 
 			 case LEFT: // 왼쪽 키 눌렀을 때 왼쪽으로 갈 수 있는지 체크 후 가능하면 이동
 				x_move = -1;
-				
 				break;
 
 			 case RIGHT: // 오른쪽 방향키 눌렀을 때 - 위와 동일하게 처리됨 
@@ -434,39 +433,9 @@ void check_key(Game *game, Block *block, Flag *flag) {
 				// 바닥에 닿은 경우 위쪽으로 한 칸띄워서 회전이 가능하면 그렇게 함(특수동작)
 				// TODO 특수동작 확인
 				*/
-				
-
-				
-				/*
-			case LEFT: // 왼쪽 키 눌렀을 때 왼쪽으로 갈 수 있는지 체크 후 가능하면 이동
-				if (check_crush(block->bx - 1, block->by, block->rotation) == true)
-					move_block(LEFT, block);
-				break;
-
-			case RIGHT: // 오른쪽 방향키 눌렀을 때 - 위와 동일하게 처리됨 
-				if (check_crush(block->bx + 1, block->by, block->rotation) == true)
-					move_block(RIGHT, block);
-				break;
-
-			case DOWN: // 아래쪽 방향키 눌렀을 때 - 위와 동일하게 처리됨 
-				if (check_crush(block->bx, block->by + 1, block->rotation) == true)
-					move_block(DOWN, block);
-				break;
-
-			case UP: //위쪽 방향키 눌렀을때 
-				if (check_crush(block->bx, block->by, (block->rotation + 1) % 4) == true)
-					move_block(UP, block);
-				// 회전할 수 있는지 체크 후 가능하면 회전
-				else if (flag->crush == 1 && check_crush(block->bx, block->by - 1, (block->rotation + 1) % 4) == true)
-					move_block(100, block);
-				// 바닥에 닿은 경우 위쪽으로 한 칸띄워서 회전이 가능하면 그렇게 함(특수동작)
-				// TODO 특수동작 확인
-				*/
 			}
-			 if (check_crush(block, x_move, y_move, (block->rotation + rotation) % 4) == true)
-				move_block(game->key, block);
+			 if (check_crush(block, x_move, y_move, (block->rotation + rotation) % 4) == true) move_block(game->key, block);
 		}
-
 		else { // 방향키가 아닌 경우 
 
 			switch (game->key) {
@@ -497,6 +466,7 @@ void check_key(Game *game, Block *block, Flag *flag) {
 	while (kbhit()) getch(); // 키 버퍼를 비움 
 } // check_key
 
+
 int check_crush(Block *block, int x, int y, int rotation) {
 
 	// 지정된 좌표와 회전값으로 충돌이 있는지 검사 
@@ -504,10 +474,12 @@ int check_crush(Block *block, int x, int y, int rotation) {
 	int i, j;
 
 	for (i = 0; i < 4; i++) {
-		for (j = 0; j < 4; j++) { // 지정된 위치의 게임판과 블럭모양을 비교해서 겹치면 false를 리턴 
-			if (blocks[block->type][rotation][i][j] == 1 && main_org[block->by + y][block->bx + x] > 0) return false;
+		for (j = 0; j < 4; j++) { // 지정된 위치의 게임판과 블럭모양을 비교해서 겹치면 false를 리턴
+
+			if (blocks[block->type][rotation][i][j] == 1 && main_org[(block->by) + y + i][(block->bx) + x + j] > 0) return false;
 		}
 	}
+
 	return true; // 하나도 안겹치면 true리턴 
 }; // check_crush
 
